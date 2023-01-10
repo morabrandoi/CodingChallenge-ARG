@@ -16,6 +16,8 @@
  * Your documentations must be sufficient for another engineer to implement this code into a larger application.
  */
 
+// NOTE: README.md contains summary docs
+
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
@@ -195,3 +197,5 @@ int main() {
     std::cout << std::endl;
     return 0;
 }
+
+// NOTE: README.md contains summary docs
