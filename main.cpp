@@ -18,51 +18,133 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <ctime>
+#include <climits>
+#include <deque>
+#include <cmath>
 
-namespace AnomalyDetector {
-    class Buffer {
-    public:
-        int buffer[100];
-        int index;
-        Buffer() : buffer(), index(0){}
+namespace defaults
+{
+    static const unsigned int window_size = 100;
+    static const unsigned int alarm_percentage = 25;
+    // below is for testing
+    static const bool use_random = true;
+}
 
-        void Add(int value) {
-            if (index == 100) {
-                index = 0;
-            }
-            buffer[index] = value;
-            index++;
-        }
-    };
-    static Buffer buffer1;
+class AnomalyDetector {
+private:
+  int prevPoint = 0;
+  bool prevIsPossiblePeak = false;
+  unsigned int datumNum = 0;
+  bool overflowOccured = false;
+  bool alarmActive = false;
 
-    int GetDataPoint() {
-        buffer1.Add(rand() % 100);
-        return buffer1.index;
+  std::deque<unsigned int> peaksInWindow;
+  unsigned int windowSize;
+  unsigned int alarmPercentage;
+
+  void incrementDatumNum(){
+    // if at max val, reset all timestamps to 0
+    if (datumNum == UINT_MAX){
+      int minVal = peaksInWindow.back();
+      for (int i = 0; i < peaksInWindow.size(); i++) {
+        peaksInWindow[i] -= minVal;
+      }
+      datumNum = windowSize - 1;
+      overflowOccured = true;
     }
+    
+    datumNum++;
+  }
 
-    int PeakDetector() {
-        int peaksDetected = 0;
-        for (int i = 1; i < 98; ++i) {
-            if (buffer1.buffer[i] > buffer1.buffer[i - 1] && buffer1.buffer[i] > buffer1.buffer[i + 1]) {
-                peaksDetected++;
-            }
-        }
-        return peaksDetected;
+  void pruneOldPeaks() {
+    bool minDataReceived = datumNum >= windowSize;
+    bool peaksNonempty = !peaksInWindow.empty();
+    if (!(minDataReceived && peaksNonempty)) return;
+
+    int lowerLimit = datumNum - windowSize;
+    bool peakTooOld = peaksInWindow.back() <= lowerLimit;
+    while (peakTooOld)
+    {
+      peaksInWindow.pop_back();
+      peakTooOld = peaksInWindow.back() <= lowerLimit;
     }
+  }
+
+  void checkIfPeakCreated(int dataPoint) {
+    if (dataPoint < prevPoint && prevIsPossiblePeak) {
+      peaksInWindow.push_front(datumNum);
+    }
+  }
+
+  void checkForAnomaly() {
+    int minimumPeaks = ceil(windowSize * (alarmPercentage / 100.0)) ;
+    bool peaksBelowThreshold = peaksInWindow.size() < minimumPeaks;
+    bool minDataReceived = datumNum >= windowSize;
+
+    alarmActive = minDataReceived && peaksBelowThreshold;
+  }
+
+public:
+  void processNewDataPoint(int dataPoint) {
+    incrementDatumNum();
+    pruneOldPeaks();
+    checkIfPeakCreated(dataPoint);
+
+    checkForAnomaly();
+
+    prevIsPossiblePeak = dataPoint > prevPoint && datumNum > 1;
+    prevPoint = dataPoint;
+  }
+
+  // getters
+  bool getAlarmActive() {return alarmActive;}
+  bool getOverflowOccured() {return overflowOccured;}
+  int getDatumNum() {return datumNum;}
+
+  AnomalyDetector(unsigned int windowSize = defaults::window_size,
+                  unsigned int alarmPercentage = defaults::alarm_percentage) {
+    this->windowSize = windowSize;
+    this->alarmPercentage = alarmPercentage;
+  }
+};  
+
+/* EVERYTHING BELOW IS FOR TESTING */
+int getFromRandom() {
+  return std::rand() - (RAND_MAX / 2); // half the vals will be < 0
+}
+
+std::deque<int> fakeStreamList = {
+  1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,3,3,3,3,3,3,3,3,3,3,3,3,3,
+  3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
+  };
+int getFromList() {
+  int ret = fakeStreamList.front();
+  fakeStreamList.pop_front();
+  return ret;
 }
 
 int main() {
-    int cycleCounter = 0;
-    while (true) {
-        while (AnomalyDetector::GetDataPoint() < 100) {}
-        int peaks = AnomalyDetector::PeakDetector();
-        if (peaks < 25) {
-            std::cout << "Anomaly detected after " << std::to_string(cycleCounter) << " cycles!" << std::endl;
-            break;
-        } else {
-            cycleCounter++;
-        }
+    // getting a new random seed everytime
+    unsigned int seed = time(0);
+    srand(seed);
+    
+    AnomalyDetector detector = AnomalyDetector();
+
+    while (!detector.getAlarmActive()) {
+      int fakeStreamVal = defaults::use_random
+        ? getFromRandom()
+        : getFromList();
+      detector.processNewDataPoint(fakeStreamVal);
     }
+    
+    std::cout << std::endl;
+    std::cout << "Random seed used: " << seed << std::endl;
+    std::cout << "Anomaly detected after "
+              << (detector.getOverflowOccured()
+                ? std::to_string(UINT_MAX) + "+"
+                : std::to_string(detector.getDatumNum()))
+              << " data points." << std::endl;
+    std::cout << std::endl;
     return 0;
 }
