@@ -45,6 +45,10 @@ private:
 
   // To intern: only storing relevant peaks saves space and time (constant time
   // insertion/deletion at front and back).
+
+  // Notes: if the application requires more implementation details like
+  // copy constructors, destructors, iterators, etc. Then it might make sense to
+  // have the deque be public. This may cause unwanted access to other methods.
   std::deque<unsigned int> peaksInWindow;
   unsigned int windowSize;
   unsigned int alarmPercentage;
@@ -69,6 +73,10 @@ private:
 
   // To intern: if peak falls outside of window it is no longer relevant so we
   // delete it from our queue.
+  // Note: the implementation here is nice because we could easily change the
+  // code to instead work on the last 100 seconds of datapoints instead of just
+  // the last 100 datapoints. The pruning would be time based as would the
+  // inserting of peaks.
   void pruneOldPeaks() {
     bool tooFewDataPoints = datumNum < windowSize;
     bool peaksDequeEmpty = !peaksInWindow.empty();
@@ -115,6 +123,9 @@ public:
   int getDatumNum() {return datumNum;}
 
   // To intern: by allowing for params we add reuasbility.
+
+  // Note: We should be checking the inputs to prevent underflow since we are
+  // dealing with unsigned ints
   AnomalyDetector(unsigned int windowSize = defaults::window_size,
                   unsigned int alarmPercentage = defaults::alarm_percentage) {
     this->windowSize = windowSize;
@@ -126,12 +137,18 @@ public:
 
 // To intern: it was never specified that all stream values would be nonnegative
 // so it is important to include negative values as we test.
+// Note: It would be cool in the future to implement sampling from a custom
+// distribution that more accurately reflects the real-world data.
 int getFromRandom() {
   return std::rand() - (RAND_MAX / 2);
 }
 
 // To intern: to better test corner cases or investigate errors we should have
 // an option for manual input which is below.
+// Note: a vector or array would make more sense here but this would require
+// either an extra import or an extra global var so it is avoided for now. Also
+// the hardcoded list can result in segfault if the data is such that an alarm
+// is never thrown.
 std::deque<int> fakeStreamList = {
   1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,3,3,3,3,3,3,3,3,3,3,3,3,3,
   3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
@@ -144,6 +161,9 @@ int getFromList() {
 
 int main() {
     // getting random seed from time or from given
+    // Note: If this were a proper production testing environment we would want
+    // to print the seed to some sort of log file. It also may make sense to
+    // pull the set seed from arguments passed in via shell.
     unsigned int seed = defaults::use_time_seed ? time(0) : defaults::set_seed;
     // To intern: We would benefit from a different random number everytime and
     // to ensure reproducability we also should be setting + recording the seed
