@@ -23,11 +23,14 @@
 #include <deque>
 #include <cmath>
 
+// To help make code generalizable we define defaults here
 namespace defaults
 {
     static const unsigned int window_size = 100;
     static const unsigned int alarm_percentage = 25;
     // below is for testing
+    static const bool use_time_seed = true;
+    static const unsigned int set_seed = 1673353513;
     static const bool use_random = true;
 }
 
@@ -111,7 +114,7 @@ public:
 
 /* EVERYTHING BELOW IS FOR TESTING */
 int getFromRandom() {
-  return std::rand() - (RAND_MAX / 2); // half the vals will be < 0
+  return std::rand() - (RAND_MAX / 2);
 }
 
 std::deque<int> fakeStreamList = {
@@ -125,19 +128,22 @@ int getFromList() {
 }
 
 int main() {
-    // getting a new random seed everytime
-    unsigned int seed = time(0);
+    // getting random seed from time or from given
+    unsigned int seed = defaults::use_time_seed ? time(0) : defaults::set_seed;
     srand(seed);
     
     AnomalyDetector detector = AnomalyDetector();
 
     while (!detector.getAlarmActive()) {
+      // where to pull data from for testing
       int fakeStreamVal = defaults::use_random
         ? getFromRandom()
         : getFromList();
+
       detector.processNewDataPoint(fakeStreamVal);
     }
     
+    // unlikely, but if overflow occurs we want a different message
     std::cout << std::endl;
     std::cout << "Random seed used: " << seed << std::endl;
     std::cout << "Anomaly detected after "
