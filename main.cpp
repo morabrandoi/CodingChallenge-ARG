@@ -23,7 +23,7 @@
 #include <deque>
 #include <cmath>
 
-// To help make code generalizable we define defaults here
+// To intern: we define defaults here to make the code reusable/generalizable
 namespace defaults
 {
     static const unsigned int window_size = 100;
@@ -34,6 +34,7 @@ namespace defaults
     static const bool use_random = true;
 }
 
+// To intern: Class instead of namespace for reusabiltiy
 class AnomalyDetector {
 private:
   int prevPoint = 0;
@@ -42,44 +43,51 @@ private:
   bool overflowOccured = false;
   bool alarmActive = false;
 
+  // To intern: only storing relevant peaks saves space and time (constant time
+  // insertion/deletion at front and back).
   std::deque<unsigned int> peaksInWindow;
   unsigned int windowSize;
   unsigned int alarmPercentage;
 
   void incrementDatumNum(){
-    // if at max val, reset all timestamps to 0
+    // To intern: resetting all time step vals but keeping relative order
     if (datumNum == UINT_MAX){
-      int minVal = peaksInWindow.back();
-      for (int i = 0; i < peaksInWindow.size(); i++) {
-        peaksInWindow[i] -= minVal;
-      }
-      datumNum = windowSize - 1;
       overflowOccured = true;
+
+      int offset = UINT_MAX - windowSize;
+
+      // modifying all recent peaks
+      for (int i = 0; i < peaksInWindow.size(); i++) {
+        peaksInWindow[i] -= offset;
+      }
+      // modifying datanum itself. Subtracting 1 more because next line adds 1
+      datumNum -= (offset + 1);
     }
     
     datumNum++;
   }
 
+  // To intern: if peak falls outside of window it is no longer relevant so we
+  // delete it from our queue.
   void pruneOldPeaks() {
     bool tooFewDataPoints = datumNum < windowSize;
     bool peaksDequeEmpty = !peaksInWindow.empty();
     if (tooFewDataPoints || peaksDequeEmpty) return;
 
     int lowerLimit = datumNum - windowSize;
-    bool peakTooOld = peaksInWindow.back() <= lowerLimit;
-    while (peakTooOld)
-    {
-      peaksInWindow.pop_back();
-      peakTooOld = peaksInWindow.back() <= lowerLimit;
-    }
+    while (peaksInWindow.back() <= lowerLimit) peaksInWindow.pop_back();
   }
 
+  // To intern: this is how to check for peaks as we consume the stream
   void checkIfPeakCreated(int dataPoint) {
     if (dataPoint < prevPoint && prevIsPossiblePeak) {
       peaksInWindow.push_front(datumNum);
     }
   }
 
+  // To intern: deriving minimumPeaks good for reusability/generalization. Also
+  // we check minDataReceived because we need to have enough datapoints before
+  // checking if there is an anomaly.
   void checkForAnomaly() {
     int minimumPeaks = ceil(windowSize * (alarmPercentage / 100.0)) ;
     bool peaksBelowThreshold = peaksInWindow.size() < minimumPeaks;
@@ -89,6 +97,7 @@ private:
   }
 
 public:
+  // To intern: large integrating functions should be highly readable.
   void processNewDataPoint(int dataPoint) {
     incrementDatumNum();
     pruneOldPeaks();
@@ -105,6 +114,7 @@ public:
   bool getOverflowOccured() {return overflowOccured;}
   int getDatumNum() {return datumNum;}
 
+  // To intern: by allowing for params we add reuasbility.
   AnomalyDetector(unsigned int windowSize = defaults::window_size,
                   unsigned int alarmPercentage = defaults::alarm_percentage) {
     this->windowSize = windowSize;
@@ -113,10 +123,15 @@ public:
 };  
 
 /* EVERYTHING BELOW IS FOR TESTING */
+
+// To intern: it was never specified that all stream values would be nonnegative
+// so it is important to include negative values as we test.
 int getFromRandom() {
   return std::rand() - (RAND_MAX / 2);
 }
 
+// To intern: to better test corner cases or investigate errors we should have
+// an option for manual input which is below.
 std::deque<int> fakeStreamList = {
   1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,3,3,3,3,3,3,3,3,3,3,3,3,3,
   3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
@@ -130,12 +145,17 @@ int getFromList() {
 int main() {
     // getting random seed from time or from given
     unsigned int seed = defaults::use_time_seed ? time(0) : defaults::set_seed;
+    // To intern: We would benefit from a different random number everytime and
+    // to ensure reproducability we also should be setting + recording the seed
     srand(seed);
     
     AnomalyDetector detector = AnomalyDetector();
 
+    // To intern: note how since we pull one data point at a time we are hitting
+    // the goal of checking *continous* sets of 100. This requires a sliding
+    // window technique which is implemented in the detector class.
     while (!detector.getAlarmActive()) {
-      // where to pull data from for testing
+      // deciding where to pull data from for testing
       int fakeStreamVal = defaults::use_random
         ? getFromRandom()
         : getFromList();
@@ -143,7 +163,8 @@ int main() {
       detector.processNewDataPoint(fakeStreamVal);
     }
     
-    // unlikely, but if overflow occurs we want a different message
+    // To intnrn: it is unlikely, but if overflow occurs we want
+    // a different message to be printed
     std::cout << std::endl;
     std::cout << "Random seed used: " << seed << std::endl;
     std::cout << "Anomaly detected after "
