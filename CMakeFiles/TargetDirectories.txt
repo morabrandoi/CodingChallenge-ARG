@@ -1,0 +1,3 @@
+/Users/BrandoMora/Documents/ARG C++Challenge/CMakeFiles/AnomalyDetector.dir
+/Users/BrandoMora/Documents/ARG C++Challenge/CMakeFiles/edit_cache.dir
+/Users/BrandoMora/Documents/ARG C++Challenge/CMakeFiles/rebuild_cache.dir
