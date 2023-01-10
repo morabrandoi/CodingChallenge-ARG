@@ -58,9 +58,9 @@ private:
   }
 
   void pruneOldPeaks() {
-    bool minDataReceived = datumNum >= windowSize;
-    bool peaksNonempty = !peaksInWindow.empty();
-    if (!(minDataReceived && peaksNonempty)) return;
+    bool tooFewDataPoints = datumNum < windowSize;
+    bool peaksDequeEmpty = !peaksInWindow.empty();
+    if (tooFewDataPoints || peaksDequeEmpty) return;
 
     int lowerLimit = datumNum - windowSize;
     bool peakTooOld = peaksInWindow.back() <= lowerLimit;
