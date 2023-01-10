@@ -22,10 +22,14 @@
 namespace AnomalyDetector {
     class Buffer {
     public:
-        int buffer[100];  // repeated use of hardcoded number indicates we should extract this out to a #DEFINE macro. Also helps extensibility.
+        // To intern: the repeated use of hardcoded "100" indicates we should
+        // factor this out to its own static const variable.
+        int buffer[100];  
         int index;
         Buffer() : buffer(), index(0){}
 
+        // To intern: could use the modular arithmetic idiom to make this more
+        // readable
         void Add(int value) {
             if (index == 100) {
                 index = 0;
@@ -34,13 +38,18 @@ namespace AnomalyDetector {
             index++;
         }
     };
+    // To intern: binding the class to the entire namespace prevents multiple
+    // anomaly detectors from running at once.
     static Buffer buffer1;
 
+    // To intern: We need to see the randomness or it will be the same sequence
+    // every time. Also why assume all values fall in [0,100]?
     int GetDataPoint() {
-        buffer1.Add(rand() % 100);  // without seeding with something like UNIX time it is the same "random" everytime
+        buffer1.Add(rand() % 100);  
         return buffer1.index;
     }
 
+    // To intern: this works but requires analyzing the whole array at once
     int PeakDetector() {
         int peaksDetected = 0;
         for (int i = 1; i < 98; ++i) {
@@ -53,7 +62,11 @@ namespace AnomalyDetector {
 }
 
 int main() {
-    int cycleCounter = 0; // this implementation does not act over a sliding window. concept of "cycles" unnecessary
+    // To intern: this implementation does not act over a sliding window. The
+    // concept of "cycles" indicates this.
+    int cycleCounter = 0;
+    // To intern: "true" could be directly replaced with "peaks < 25" and the
+    // else clause unpacked for a cleaner refactor.
     while (true) {
         while (AnomalyDetector::GetDataPoint() < 100) {}
         int peaks = AnomalyDetector::PeakDetector();
