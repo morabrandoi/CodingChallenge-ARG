@@ -1,4 +1,4 @@
-# ARGChallenge
+# Codinghallenge
 ## Summary of Changes
 A few of the main problems with the original code were
 * rand() not seeded.
